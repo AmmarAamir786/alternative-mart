@@ -244,6 +244,8 @@ async def consume_products():
             except Exception as e:
                 logger.error(f"Error processing message: {e}")
 
+    except asyncio.CancelledError:
+        logger.info("Consumer task cancelled")
     finally:
         await consumer.stop()
         logger.info("Consumer stopped")

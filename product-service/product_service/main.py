@@ -94,7 +94,7 @@ app = FastAPI(lifespan=lifespan, title="Product Service", version='1.0.0')
 
 @app.post('/products/')
 async def create_product(
-    product: Product,
+    product: ProductUpdate,
     producer: Annotated[AIOKafkaProducer, Depends(kafka_producer)]
 ):
     product_proto = product_pb2.Product(

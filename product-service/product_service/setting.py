@@ -9,8 +9,8 @@ except FileNotFoundError:
 
 
 
-DATABASE_URL = config("DATABASE_URL", cast=Secret)
-TEST_DATABASE_URL = config("TEST_DATABASE_URL", cast=Secret)
+DATABASE_URL = config("DATABASE_URL", cast=str)
+TEST_DATABASE_URL = config("TEST_DATABASE_URL", cast=str)
 
 
 BOOTSTRAP_SERVER = config("BOOTSTRAP_SERVER", cast=str)

@@ -62,7 +62,6 @@ async def kafka_producer():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-
     logger.info('Creating Topic')
     await create_topic()
     logger.info("Topic Created")
@@ -74,10 +73,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     loop = asyncio.get_event_loop()
     task = loop.create_task(consume_products())
 
-    yield
-
-    task.cancel()
-    await task
+    try:
+        yield
+    finally:
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            logger.info("Cancelled consumer task during shutdown")
 
 
 app = FastAPI(lifespan=lifespan, title="Product Service", version='1.0.0')

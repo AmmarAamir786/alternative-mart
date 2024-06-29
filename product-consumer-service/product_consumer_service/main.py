@@ -4,11 +4,11 @@ import logging
 from typing import Annotated, AsyncGenerator, List
 from fastapi import Depends, FastAPI, HTTPException
 
-from product_service.proto import product_pb2, operation_pb2
+from product_consumer_service.proto import product_pb2, operation_pb2
 
-from product_service.db import create_tables, engine, get_session
-from product_service.models import Product, ProductUpdate
-from product_service.setting import BOOTSTRAP_SERVER, KAFKA_CONSUMER_GROUP_ID, KAFKA_PRODUCT_TOPIC
+from product_consumer_service.db import create_tables, engine, get_session
+from product_consumer_service.models import Product, ProductUpdate
+from product_consumer_service.setting import BOOTSTRAP_SERVER, KAFKA_CONSUMER_GROUP_ID, KAFKA_PRODUCT_TOPIC
 from aiokafka import AIOKafkaConsumer, AIOKafkaProducer
 from aiokafka.errors import KafkaConnectionError
 from aiokafka.admin import AIOKafkaAdminClient, NewTopic

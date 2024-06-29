@@ -1,15 +1,15 @@
 from typing import Optional
+from pydantic import BaseModel
 from sqlmodel import Field, SQLModel
 
-class ProductUpdate(SQLModel):
-    name: Optional[str] = None
-    description: Optional[str] = None
-    price: Optional[float] = None
-    category: Optional[str] = None
+class ProductUpdate(BaseModel):
+    name: Optional[str]
+    product_id: Optional[int]
+    description: Optional[str]
+    price: Optional[float]
+    category: Optional[str]
+    in_stock: Optional[bool]
 
-class Product(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
-    name: str
-    description: str
-    price: float
-    category: str
+
+class Product(ProductUpdate):
+    id: Optional[int]

@@ -4,7 +4,7 @@ import logging
 from typing import Annotated, AsyncGenerator, List
 from fastapi import Depends, FastAPI, HTTPException
 
-from product_service import product_pb2
+from product_service.proto import product_pb2, operation_pb2
 
 from product_service.db import create_tables, engine, get_session
 from product_service.models import Product, ProductUpdate
@@ -62,25 +62,8 @@ async def kafka_producer():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    logger.info('Creating Topic')
     await create_topic()
-    logger.info("Topic Created")
-
-    logger.info('Creating Tables')
-    create_tables()
-    logger.info("Tables Created")
-
-    loop = asyncio.get_event_loop()
-    task = loop.create_task(consume_products())
-
-    try:
-        yield
-    finally:
-        task.cancel()
-        try:
-            await task
-        except asyncio.CancelledError:
-            logger.info("Cancelled consumer task during shutdown")
+    yield
 
 
 app = FastAPI(lifespan=lifespan, title="Product Service", version='1.0.0')
@@ -95,14 +78,22 @@ app = FastAPI(lifespan=lifespan, title="Product Service", version='1.0.0')
 @app.post('/products/')
 async def create_product(
     product: ProductUpdate,
-    producer: Annotated[AIOKafkaProducer, Depends(kafka_producer)]
+    producer: Annotated[AIOKafkaProducer, Depends(kafka_producer)],
+    session: Annotated[Session, Depends(get_session)]
 ):
+    
+    existing_product = session.exec(select(Product).where(Product.product_id == product.product_id)).first()
+    if existing_product:
+        raise HTTPException(status_code=400, detail="Product with this product_id already exists")
+
     product_proto = product_pb2.Product(
         name=product.name,
+        product_id=product.product_id,
         price=product.price,
         category=product.category,
         description=product.description,
-        operation=product_pb2.OperationType.CREATE
+        in_stock=product.in_stock,
+        operation=operation_pb2.OperationType.CREATE
     )
 
     logger.info(f"Received Message: {product_proto}")
@@ -126,11 +117,13 @@ async def edit_product(
 
     product_proto = product_pb2.Product(
         id=product_id,
+        product_id=product_update.product_id,
         name=product_update.name,
         price=product_update.price,
         category=product_update.category,
         description=product_update.description,
-        operation=product_pb2.OperationType.UPDATE
+        in_stock=product_update.in_stock,
+        operation=operation_pb2.OperationType.UPDATE
     )
 
     serialized_product = product_proto.SerializeToString()
@@ -151,7 +144,7 @@ async def delete_product(
 
     product_proto = product_pb2.Product(
         id=product_id,
-        operation=product_pb2.OperationType.DELETE
+        operation=operation_pb2.OperationType.DELETE
     )
 
     serialized_product = product_proto.SerializeToString()
@@ -212,8 +205,10 @@ async def consume_products():
                     if product.operation == product_pb2.OperationType.CREATE:
                         new_product = Product(
                             name=product.name,
+                            product_id=product.product_id,
                             description=product.description,
                             price=product.price,
+                            in_stock=product.in_stock,
                             category=product.category
                         )
                         session.add(new_product)
